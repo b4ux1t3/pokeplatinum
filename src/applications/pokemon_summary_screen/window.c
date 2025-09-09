@@ -42,8 +42,8 @@ enum SummaryTextAlignment {
 #define PP_TEXT_Y 16
 
 // Color constants for stat highlighting
-#define SUMMARY_TEXT_GREEN TEXT_COLOR(2, 0, 15) // Example: green letter, black shadow, white bg
-#define SUMMARY_TEXT_RED   TEXT_COLOR(1, 0, 15) // Example: red letter, black shadow, white bg
+#define SUMMARY_TEXT_GREEN TEXT_COLOR(2, 2, 15) // Example: green letter, black shadow, white bg
+#define SUMMARY_TEXT_RED   TEXT_COLOR(1, 1, 15) // Example: red letter, black shadow, white bg
 
 // Helper function to get color for a stat based on nature
 static TextColor GetStatColorForNature(u8 nature, u8 statType) {
