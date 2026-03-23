@@ -28,6 +28,7 @@
 #include "unk_02094EDC.h"
 
 #include "res/text/bank/pokemon_summary_screen.h"
+#include "constants/charcode.h"
 
 // todo: consolidate this with more generic ones if this scheme is used elsewhere
 enum SummaryTextAlignment {
@@ -42,8 +43,8 @@ enum SummaryTextAlignment {
 #define PP_TEXT_Y 16
 
 // Color constants for stat highlighting
-#define SUMMARY_TEXT_GREEN TEXT_COLOR(2, 2, 15) // Example: green letter, black shadow, white bg
-#define SUMMARY_TEXT_RED   TEXT_COLOR(1, 1, 15) // Example: red letter, black shadow, white bg
+#define SUMMARY_TEXT_GREEN TEXT_COLOR(2, 2, 15)
+#define SUMMARY_TEXT_RED   TEXT_COLOR(7, 7, 15)
 
 // Helper function to get color for a stat based on nature
 static TextColor GetStatColorForNature(u8 nature, u8 statType) {
@@ -1633,12 +1634,42 @@ void PokemonSummaryScreen_PrintIVs(PokemonSummaryScreen *summaryScreen)
     SetAndFormatNumberBuf(summaryScreen, PokemonSummary_Text_TemplateSpeed, summaryScreen->monData.speedIV, 2, PADDING_MODE_NONE);
     PrintStrbufToWindow(summaryScreen, &summaryScreen->extraWindows[SUMMARY_WINDOW_SPEED], SUMMARY_TEXT_BLACK, ALIGN_RIGHT);
 
+    // Update label to "Perfect"
+    Window_FillTilemap(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY], 0);
+    const charcode_t perfectLabel[] = {CHAR_P, CHAR_e, CHAR_r, CHAR_f, CHAR_e, CHAR_c, CHAR_t, CHAR_EOS};
+    Strbuf_CopyChars(summaryScreen->strbuf, perfectLabel);
+    Text_AddPrinterWithParamsAndColor(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY], FONT_SYSTEM, summaryScreen->strbuf, 0, 0, TEXT_SPEED_NO_TRANSFER, SUMMARY_TEXT_WHITE, NULL);
+    Window_ScheduleCopyToVRAM(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY]);
+
+    // Count and display perfect IVs (IVs that are 31)
+    u8 perfectIVs = 0;
+    if (summaryScreen->monData.hpIV == 31) perfectIVs++;
+    if (summaryScreen->monData.atkIV == 31) perfectIVs++;
+    if (summaryScreen->monData.defIV == 31) perfectIVs++;
+    if (summaryScreen->monData.speedIV == 31) perfectIVs++;
+    if (summaryScreen->monData.spAtkIV == 31) perfectIVs++;
+    if (summaryScreen->monData.spDefIV == 31) perfectIVs++;
+    Window_FillTilemap(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY], 0);
+    u32 abilityWindowWidth = Window_GetWidth(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY]) * 8;
+    PrintCurrentAndMaxInfo(summaryScreen, SUMMARY_WINDOW_ABILITY, PokemonSummary_Text_Slash,
+                          PokemonSummary_Text_TemplateCurrentHp, PokemonSummary_Text_TemplateMaxHp,
+                          perfectIVs, 6, 1, abilityWindowWidth / 2, 0);
+
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_HP]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ATTACK]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_DEFENSE]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SP_ATTACK]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SP_DEFENSE]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SPEED]);
+    Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY]);
+
+    // Display IV description text
+    Window_FillTilemap(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION], 0);
+    MessageLoader *msgLoader = MessageLoader_Init(MESSAGE_LOADER_NARC_HANDLE, NARC_INDEX_MSGDATA__PL_MSG, TEXT_BANK_ABILITY_DESCRIPTIONS, HEAP_ID_POKEMON_SUMMARY_SCREEN);
+    MessageLoader_GetStrbuf(msgLoader, 124, summaryScreen->strbuf);
+    MessageLoader_Free(msgLoader);
+    Text_AddPrinterWithParamsAndColor(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION], FONT_SYSTEM, summaryScreen->strbuf, 0, 0, TEXT_SPEED_NO_TRANSFER, SUMMARY_TEXT_BLACK, NULL);
+    Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION]);
 }
 
 void PokemonSummaryScreen_PrintEVs(PokemonSummaryScreen *summaryScreen)
@@ -1663,12 +1694,38 @@ void PokemonSummaryScreen_PrintEVs(PokemonSummaryScreen *summaryScreen)
     SetAndFormatNumberBuf(summaryScreen, PokemonSummary_Text_TemplateSpeed, summaryScreen->monData.speedEV, 3, PADDING_MODE_NONE);
     PrintStrbufToWindow(summaryScreen, &summaryScreen->extraWindows[SUMMARY_WINDOW_SPEED], SUMMARY_TEXT_BLACK, ALIGN_RIGHT);
 
+    // Update label to "Total"
+    Window_FillTilemap(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY], 0);
+    const charcode_t totalLabel[] = {CHAR_T, CHAR_o, CHAR_t, CHAR_a, CHAR_l, CHAR_EOS};
+    Strbuf_CopyChars(summaryScreen->strbuf, totalLabel);
+    Text_AddPrinterWithParamsAndColor(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY], FONT_SYSTEM, summaryScreen->strbuf, 0, 0, TEXT_SPEED_NO_TRANSFER, SUMMARY_TEXT_WHITE, NULL);
+    Window_ScheduleCopyToVRAM(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY]);
+
+    // Calculate and display total EVs (current/max format)
+    u16 totalEVs = summaryScreen->monData.hpEV + summaryScreen->monData.atkEV +
+                   summaryScreen->monData.defEV + summaryScreen->monData.speedEV +
+                   summaryScreen->monData.spAtkEV + summaryScreen->monData.spDefEV;
+    Window_FillTilemap(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY], 0);
+    u32 abilityWindowWidth = Window_GetWidth(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY]) * 8;
+    PrintCurrentAndMaxInfo(summaryScreen, SUMMARY_WINDOW_ABILITY, PokemonSummary_Text_Slash,
+                          PokemonSummary_Text_TemplateCurrentHp, PokemonSummary_Text_TemplateMaxHp,
+                          totalEVs, 510, 3, abilityWindowWidth / 2, 0);
+
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_HP]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ATTACK]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_DEFENSE]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SP_ATTACK]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SP_DEFENSE]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SPEED]);
+    Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY]);
+
+    // Display EV description text
+    Window_FillTilemap(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION], 0);
+    MessageLoader *msgLoader = MessageLoader_Init(MESSAGE_LOADER_NARC_HANDLE, NARC_INDEX_MSGDATA__PL_MSG, TEXT_BANK_ABILITY_DESCRIPTIONS, HEAP_ID_POKEMON_SUMMARY_SCREEN);
+    MessageLoader_GetStrbuf(msgLoader, 125, summaryScreen->strbuf);
+    MessageLoader_Free(msgLoader);
+    Text_AddPrinterWithParamsAndColor(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION], FONT_SYSTEM, summaryScreen->strbuf, 0, 0, TEXT_SPEED_NO_TRANSFER, SUMMARY_TEXT_BLACK, NULL);
+    Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION]);
 }
 
 void PokemonSummaryScreen_PrintStats(PokemonSummaryScreen *summaryScreen)
@@ -1694,10 +1751,32 @@ void PokemonSummaryScreen_PrintStats(PokemonSummaryScreen *summaryScreen)
     SetAndFormatNumberBuf(summaryScreen, PokemonSummary_Text_TemplateSpeed, summaryScreen->monData.speed, 3, PADDING_MODE_NONE);
     PrintStrbufToWindow(summaryScreen, &summaryScreen->extraWindows[SUMMARY_WINDOW_SPEED], SUMMARY_TEXT_BLACK, ALIGN_RIGHT);
 
+    // Restore "Ability" label
+    Window_FillTilemap(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY], 0);
+    PrintTextToStaticWindow(summaryScreen, SUMMARY_WINDOW_LABEL_ABILITY, PokemonSummary_Text_LabelAbility, SUMMARY_TEXT_WHITE, ALIGN_LEFT);
+    Window_ScheduleCopyToVRAM(&summaryScreen->staticWindows[SUMMARY_WINDOW_LABEL_ABILITY]);
+
+    // Restore ability text when viewing normal stats
+    Window_FillTilemap(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY], 0);
+    Window_FillTilemap(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION], 0);
+
+    StringTemplate_SetAbilityName(summaryScreen->strFormatter, 0, summaryScreen->monData.ability);
+    Strbuf *buf = MessageLoader_GetNewStrbuf(summaryScreen->msgLoader, PokemonSummary_Text_TemplateAbility);
+    StringTemplate_Format(summaryScreen->strFormatter, summaryScreen->strbuf, buf);
+    Strbuf_Free(buf);
+
+    PrintStrbufToWindow(summaryScreen, &summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY], SUMMARY_TEXT_BLACK, ALIGN_LEFT);
+    MessageLoader *msgLoader = MessageLoader_Init(MESSAGE_LOADER_NARC_HANDLE, NARC_INDEX_MSGDATA__PL_MSG, TEXT_BANK_ABILITY_DESCRIPTIONS, HEAP_ID_POKEMON_SUMMARY_SCREEN);
+    MessageLoader_GetStrbuf(msgLoader, summaryScreen->monData.ability, summaryScreen->strbuf);
+    MessageLoader_Free(msgLoader);
+    PrintStrbufToWindow(summaryScreen, &summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION], SUMMARY_TEXT_BLACK, ALIGN_LEFT);
+
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_HP]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ATTACK]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_DEFENSE]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SP_ATTACK]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SP_DEFENSE]);
     Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_SPEED]);
+    Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY]);
+    Window_ScheduleCopyToVRAM(&summaryScreen->extraWindows[SUMMARY_WINDOW_ABILITY_DESCRIPTION]);
 }

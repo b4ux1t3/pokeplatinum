@@ -649,18 +649,18 @@ static int HandleInput_Main(PokemonSummaryScreen *summaryScreen)
     }
     
     else if (JOY_NEW(PAD_BUTTON_R)) {
-        if (summaryScreen->page == SUMMARY_PAGE_SKILLS && summaryScreen->skillState != SKILL_STATE_EVS) {
-            Sound_PlayEffect(SEQ_SE_DP_DECIDE);
-            PokemonSummaryScreen_PrintEVs(summaryScreen);
-            summaryScreen->skillState = SKILL_STATE_EVS;
-        }
-    }
-    
-    else if (JOY_NEW(PAD_BUTTON_SELECT)) {
         if (summaryScreen->page == SUMMARY_PAGE_SKILLS && summaryScreen->skillState != SKILL_STATE_STATS) {
             Sound_PlayEffect(SEQ_SE_DP_DECIDE);
             PokemonSummaryScreen_PrintStats(summaryScreen);
             summaryScreen->skillState = SKILL_STATE_STATS;
+        }
+    }
+    
+    else if (JOY_NEW(PAD_BUTTON_SELECT)) {
+        if (summaryScreen->page == SUMMARY_PAGE_SKILLS && summaryScreen->skillState != SKILL_STATE_EVS) {
+            Sound_PlayEffect(SEQ_SE_DP_DECIDE);
+            PokemonSummaryScreen_PrintEVs(summaryScreen);
+            summaryScreen->skillState = SKILL_STATE_EVS;
         }
     }
 
